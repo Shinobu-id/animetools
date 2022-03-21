@@ -7,6 +7,11 @@ from io import BytesIO
 import requests,re,time,os,random
 from bs4 import BeautifulSoup as bs
 save  = []
+#module_desu
+import requests as req, os, re
+from bs4 import BeautifulSoup as par
+from rich import print as rich
+from rich.panel import Panel
 os.system("clear")
 try:
     grey = '\x1b[90m'
@@ -24,24 +29,166 @@ except:
 
 def img():
 	x = f"""Author : hudaxcode
-Tools  : untuk pencinta animehh 
+Tools  : for anime lovers 
+warning: not all source code is made by hudaxcode
 {red}___________           .__          
 \__    ___/___   ____ |  |   ______
   |    | /  _ \ /  _ \|  |  /  ___/
   |    |(  <_> |  <_> )  |__\___ \ 
-  |____| \____/ \____/|____/____  {off}> version {grey}3.0{red}
+  |____| \____/ \____/|____/____  {off}> version {grey}4.0{red}
                                 \/ {off}"""
 	print(x)
 
 def menu():
 	img()
-	print(f" 1. downloads gambar waifumu")
-	print(f" 2. downloads manga pdf")
+	print(f" 1. downloads image waifu ({green}wallpapercave.com{off})")
+	print(f" 2. downloads manga pdf ({green}mangaid.click{off})")
+	print(f" 3. downloads anime hd/sd ({green}otakudesu.live{off})")
 	hx = input("hudaxcode/> ")
 	if hx =="1":
 		search()
 	if hx =="2":
 		pdf()
+	if hx =="3":
+		try: os.mkdir("otaku")
+		except: pass
+		desu()
+		
+#desu
+url = "https://otakudesu.live/"
+def convert_bytes(num):
+	step_unit = 1024
+	for x in ['bytes', 'KB', 'MB', 'GB', 'TB']:
+		if num < step_unit:
+			return "%3.1f %s" % (num, x)
+		num /= step_unit
+
+def search_desu(query, num=0, DumpLink=[]):
+	cek = par(req.get(url+"?s={}&post_type=anime".format(query.replace(" ","+"))).text, "html.parser")
+	print("")
+	for li in cek.find_all("li", {"style": "list-style:none;"}):
+		num += 1
+		links = li.find("h2").find("a")
+		DumpLink.append(links.get("href"))
+		status = re.search("\<b>Status<\/b>\s:\s(\w+)<\/div>", str(li)).group(1)
+
+		print(f"({yellow}{str(num)}{off}) - Judul  : {green}"+links.text)
+		setGenre = li.find("div", {"class": "set"})
+		print(f" {off}"*int(len(list(str(num))) + 2)+f"{off} - Genre  : {green}"+", ".join([genre.text for genre in setGenre.find_all("a")]))
+		print(f" {off}"*int(len(list(str(num))) + 2)+f"{off} - Status : {green}"+status+f"{off}");print("\n")
+	if len(DumpLink) == 0:
+		return False
+	else:
+		return DumpLink
+
+def chek_support_dl(visit, resoVideo: int):
+		url_download = []
+		teks = []
+		ses = req.Session()
+		cok = par(req.get(visit).text, "html.parser")
+		donlod = cok.find("div", {"class": "download"}).findAll("ul")[0]
+		donlod = donlod.findAll("li")
+		del donlod[0]
+		donlod = donlod[resoVideo]
+		title = cok.find("h1", {"class": "posttl"}).text
+		for dl in donlod.find_all("a"):
+			url_download.append(dl.get("href"))
+			teks.append(dl.text)
+		print(f"- Judul: {green}"+title)
+		print(f"{off}- Cek url yang mendukung zippyshare")
+		if "zippyshare.com" in str(url_download):
+			print(f"{off}- zippyshare terdeteksi, tunggu sebentar")
+			getsUrl = par(ses.get("".join(re.findall("(https?://.*?\.zippyshare.com\/.*?file.html)", str(url_download))), headers={"user-agent": "chrome"}).text, "html.parser")
+			files = getsUrl.find("font", {"style": "line-height:22px; font-size: 14px;"}).text
+			size = "".join(re.findall("Size:.*?\">(.*?)</font>", str(getsUrl)))
+			dld = re.findall("document\.getElementById\('dlbutton'\)\.href\s=\s\"(.*?)\"\s\+\s(\(.*?\))\s\+\s\"(.*?)\";", str(getsUrl))[0]
+			dur = re.search("(https?://.*?\.zippyshare.com)", str(url_download)).group(1)
+			print(f"{off}- Nama files: {green}"+files)
+			print(f"{off}- Size video: {green}"+size)
+
+			#-> execute
+			downloader = dur+dld[0]+str(eval(dld[1]))+dld[-1]
+			r = ses.get(downloader, headers={"user-agent": "chrome"}, stream=True)
+			with open("otaku/"+files, "wb") as sv:
+				total_length = int(r.headers.get('content-length'))
+				readsofar = 0
+				for chunk in r.iter_content(chunk_size=1024):
+					if chunk:
+						readsofar += len(chunk)
+						print(f"\r- {yellow}Downloading "+str(int(readsofar / total_length * 100))+"% ("+str(convert_bytes(readsofar))+" | "+str(convert_bytes(total_length))+") ", end="")
+						sv.write(chunk)
+						sv.flush()
+				sv.close()
+			print(f"\n{off}- Tersimpan:{green}otaku/{files}")
+		else:
+			print("- ZippyShare tidak terdeteksi, silahkan download manual")
+			for judul, dol in zip(teks, url_download):
+				print("- "+judul+": "+dol)
+
+
+def eps_chekin(links, mahou=[], rev=[]):
+	global url 
+	sv = []
+	cek = par(req.get(links).text, "html.parser")
+	sins = cek.find("div", {"class": "infozingle"})
+	for span in sins.find_all("span"):
+		rich(Panel("- "+span.text))
+	cv = cek.find("div", {"class": "sinopc"}).text
+	rich(Panel(cv,title="[green]Sipnosis"))
+	lii = cek.findAll("ul")[3]
+	for eps in lii.find_all("li"):
+		rev.append(eps.find("a").get("href"))
+	if len(rev) == 0:
+		print("\nTidak ada episode yang bisa di ambil")
+		input("[ Enter to back ]"); desu()
+	else:
+		print(f"- episode berjumlah ({green}{str(len(rev))}{off})")
+		print("- contoh : masukan episode yang ingin anda unduh, ex: 1")
+		print("      - gunakan koma untuk multi download, ex: 3,5,6")
+		print("      - masukan inputan All untuk download semua episode, ex: all")
+		whileEps = input("\nMau unduh yang mana: ")
+		resolusi = input("Mau video hd/sd? [h/s]: ").lower()
+		while resolusi not in ["s","h"]:
+			resolusi = input("Mau video hd/sd? [h/s]: ").lower()
+		print(""); [mahou.append(_) for _ in reversed(rev)]
+		if resolusi == "s":
+			res = 0
+		else:
+			res = -1
+
+		if whileEps.lower().strip() == "all":
+			for mausama in mahou:
+				try:
+					chek_support_dl(mausama, res)
+				except:
+					print("[!] Gomene senpai :), tools ini hanya bisa download per-episode\n    Langsung saja kunjungi situs {}".format(url))
+			print("")
+		else:
+			for delim in whileEps.split(","):
+				try:
+					maou = mahou[int(delim)-1]
+					chek_support_dl(maou, res)
+				except:
+					print("[!] Gomene senpai :), tools ini hanya bisa download per-episode\n    Langsung saja kunjungi situs {}".format(url))
+			print("")
+
+def desu():
+	query = input("query anime : ")
+	while query == "":
+		query = input("[•] Cari anime: ")
+	cari = search_desu(query)
+	if cari == False:
+		exit("sorry no results found anime...\n")
+	else:
+		pilih = input("\nPilih pencarian: ")
+		while int(pilih) > len(cari) or not pilih.isdigit():
+			pilih = input("Pilih pencarian: ")
+		try:
+			chs = cari[int(pilih)-1]
+		except Exception as ex:
+			exit("there is an error: "+str(ex)+"\n")
+		eps_chekin(chs)
+
 #pdf
 MAINDIR="/storage/emulated/0/Download/animetools"
 try:
@@ -78,7 +225,7 @@ def download(cap, url, title, num, pdf):
                         n+=1
                         if n > len(src):
                                 print(f"\r{' '*len(proges)}", end="", flush=True)
-                                print(f"\r[✓] Done {PATH.split('/')[-1]}", end="", flush=True)
+                                print(f"\r Done {PATH.split('/')[-1]}", end="", flush=True)
                                 path = f"{PATH}"
                                 print(f"\n[!] Saved to {path}")
                 else:
@@ -91,7 +238,7 @@ def download(cap, url, title, num, pdf):
                 for i in imgs:
                         cpdf.append(Image.open(BytesIO(i)).convert('RGB'))
                 cpdf[0].save(f"{PATH}.pdf", save_all=True, append_images=cpdf[1:])
-                print(f"\r[✓] Done {PATH.split('/')[-1]}   ",end="",flush=True)
+                print(f"\r Done {PATH.split('/')[-1]}   ",end="",flush=True)
                 path = f"{PATH}"
                 print(f"\n[!] Saved to {path}")
         print()
@@ -266,6 +413,7 @@ def downloads():
 
 
 if __name__=="__main__":
+	os.system("git pull")
 	try:os.system("rm -rf hudaxcode")
 	except:pass
 	menu()
